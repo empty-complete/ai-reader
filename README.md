@@ -5,13 +5,15 @@
 ## Быстрый старт
 
 ```python
-from ai_reader import ExtractorAI
+from ai_reader import ExtractorAI, make_gigachat_client
 
-extractor = ExtractorAI()
+llm_client = make_gigachat_client(credentials="...", scope="GIGACHAT_API_PERS")
+
+extractor = ExtractorAI(llm_client=llm_client)
 extractor.load_prepromt("Ты информационный ассистент.")
 extractor.load_dict(["имя", "телефон"])
 result = extractor.extract("Меня зовут Ольга. Мой телефон: +7-900-555-55-55.")
 print(result)
 ```
 
-Если `ExtractorAI` создан без `llm_client`, то метод `extract` просто вернёт словарь с указанными ключами и пустыми значениями — это удобный fallback, когда LLM недоступна.
+`extract` требует корректно настроенный `llm_client`. Если LLM вернула ответ, который нельзя разобрать как JSON с указанными ключами, возбуждается `ValueError`.

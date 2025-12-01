@@ -17,6 +17,13 @@ Rules:
 7. JSON must be syntactically correct and available for analysis using json.loads().
 
 Returns ONLY JSON. No markdown, no code blocks, no prose.
+
+
+Additional information you need to know before you start working:
+{prepromt}
+
+Here is the text to extract the data from:
+{text}
 """
 
 class ExtractorAI:
@@ -43,10 +50,22 @@ class ExtractorAI:
 
     def load_dict(self, keys: Iterable[str]) -> None:
         """Configure the extraction targets."""
-        normalized = tuple(self._normalize_key(key) for key in keys if str(key).strip())
-        if not normalized:
+        seen: set[str] = set()
+        normalized_list: list[str] = []
+
+        for raw in keys:
+            key = self._normalize_key(raw)
+            if not key:
+                continue
+            if key in seen:
+                continue
+            seen.add(key)
+            normalized_list.append(key)
+
+        if not normalized_list:
             raise ValueError("keys collection cannot be empty")
-        self._keys = normalized
+
+        self._keys = tuple(normalized_list)
 
     def extract(self, text: str) -> dict[str, str]:
         """Extract information from the text and map it to the configured keys."""
@@ -54,26 +73,31 @@ class ExtractorAI:
             raise TypeError("text must be string")
         if not self._keys:
             raise RuntimeError("load_dict must be called before extract")
+        
+        if self._llm_client is None:
+            raise RuntimeError(
+                "llm_client is not configured. "
+                "Pass a callable to ExtractorAI(llm_client=...) before calling extract()."
+            )
 
         payload = self._compose_prompt(text)
 
-        if self._llm_client is not None:
-            raw = self._llm_client(payload)
-            parsed = self._parse_response(raw)
-            if parsed is not None:
-                return parsed
-
-        return self._empty_result()
+        raw = self._llm_client(payload)
+        parsed = self._parse_response(raw)
+        if parsed is None:
+            raise ValueError(
+                "LLM returned a response that could not be parsed as a JSON object "
+                "with the configured keys."
+            )
+        return parsed
 
     def _compose_prompt(self, text: str) -> str:
-        parts: list[str] = []
-        if self.prepromt:
-            parts.append(self.prepromt)
-        parts.append(RULES)
-        parts.append("Collect information on the keys: " + ", ".join(self._keys))
-        parts.append("The original text:")
-        parts.append(text.strip())
-        return "\n\n".join(parts)
+        prompt_intro = self.prepromt or "None"
+        return RULES.format(
+            keys=", ".join(self._keys),
+            prepromt=prompt_intro,
+            text=text.strip(),
+        ).strip()
 
     def _parse_response(self, raw: Any) -> dict[str, str] | None:
         if not isinstance(raw, str):
@@ -84,23 +108,38 @@ class ExtractorAI:
             return None
         if not isinstance(data, Mapping):
             return None
-        return self._ensure_all_keys(
-            {key: self._stringify(data.get(key, "")) for key in self._keys}
-        )
+
+        result: dict[str, str] = {}
+        for key in self._keys:
+            value = data.get(key, "")
+
+            # Normalized types:
+            # - None -> ""
+            # - scalars -> str()
+            # - list -> "v1,v2,v3"
+            # - another types is error
+
+            if value is None:
+                normalized = ""
+            elif isinstance(value, str):
+                normalized = value
+            elif isinstance(value, (int, float, bool)):
+                normalized = str(value)
+            elif isinstance(value, list):
+                normalized = ",".join(str(item) for item in value)
+            else:
+                # Structure is strange
+                return None
+
+            result[key] = normalized
+
+        return self._ensure_all_keys(result)
 
     def _ensure_all_keys(self, data: Mapping[str, str]) -> dict[str, str]:
         return {key: data.get(key, "") for key in self._keys}
 
     def _normalize_key(self, key: str) -> str:
         return str(key).strip()
-
-    def _stringify(self, value: Any) -> str:
-        if isinstance(value, str):
-            return value
-        return json.dumps(value, ensure_ascii=True)
-
-    def _empty_result(self) -> dict[str, str]:
-        return {key: "" for key in self._keys}
 
 
 
