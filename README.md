@@ -36,7 +36,7 @@ llm_client = make_gigachat_client(credentials="...", scope="GIGACHAT_API_PERS")
 
 extractor = ExtractorAI(llm_client=llm_client)
 extractor.load_prepromt("Ты информационный ассистентe")
-extractor.load_dict("имя", "телефон")
+extractor.load_keys("имя", "телефон")
 result = extractor.extract("Меня зовут Ольга - я являюсь представителем компании LEOJOPA, мой телефон: +7-900-555-55-55.")
 print(result)
 ```
@@ -57,7 +57,7 @@ llm_client = make_lmstudio_client(
 )
 
 extractor = ExtractorAI(llm_client=llm_client)
-extractor.load_dict("company_name", "contact", "phone", "tags")
+extractor.load_keys("company_name", "contact", "phone", "tags")
 result = extractor.extract("Меня зовут Ольга - я являюсь представителем компании LEOJOPA, мой телефон: +7-900-555-55-55.")
 print(result)
 ```

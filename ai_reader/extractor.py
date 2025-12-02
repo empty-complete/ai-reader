@@ -48,7 +48,7 @@ class ExtractorAI:
         """Store the prefix prompt that must be prepended before each request."""
         self.prepromt = promt
 
-    def load_dict(self, *keys: str) -> None:
+    def load_keys(self, *keys: str) -> None:
         """Configure the extraction targets."""
         seen: set[str] = set()
         normalized_list: list[str] = []
@@ -72,7 +72,7 @@ class ExtractorAI:
         if not isinstance(text, str):
             raise TypeError("text must be string")
         if not self._keys:
-            raise RuntimeError("load_dict must be called before extract")
+            raise RuntimeError("load_keys must be called before extract")
         
         if self._llm_client is None:
             raise RuntimeError(
