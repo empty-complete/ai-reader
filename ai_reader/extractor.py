@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Callable, Mapping
 import json
 from typing import Any
 
@@ -48,7 +48,7 @@ class ExtractorAI:
         """Store the prefix prompt that must be prepended before each request."""
         self.prepromt = promt
 
-    def load_dict(self, keys: Iterable[str]) -> None:
+    def load_dict(self, *keys: str) -> None:
         """Configure the extraction targets."""
         seen: set[str] = set()
         normalized_list: list[str] = []
@@ -128,7 +128,7 @@ class ExtractorAI:
             elif isinstance(value, list):
                 normalized = ",".join(str(item) for item in value)
             else:
-                # Structure is strange
+                # if structure is strange
                 return None
 
             result[key] = normalized
